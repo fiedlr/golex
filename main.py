@@ -1,4 +1,4 @@
-""" golex <github.com/fiedlr/golex> | (c) 2016 Adam Fiedler | <opensource.org/licenses/MIT> """
+""" golex v0.7 <github.com/fiedlr/golex> | (c) 2016 Adam Fiedler | <opensource.org/licenses/MIT> """
 
 import math
 import random
@@ -7,10 +7,10 @@ import time
 
 class Game:
 	""" The main class takes care of the game instance. """
-	VERSION = "0.6"
+	VERSION = "0.7"
 
 	def __init__(self, dimensions, turns, debug=0):
-		if isinstance(turns, int) and isinstance(dimensions, list):
+		if isinstance(dimensions, list) and isinstance(turns, int):
 			# State containers
 			self.__state = []
 			self.__strategies = []
@@ -37,29 +37,24 @@ class Game:
 		if isinstance(adds, list) and isinstance(deletes, list):
 			for cell in adds:
 				pos = cell.get_position()
-				orig_cell = 0
-				if self.is_taken(pos):
-					orig_cell = self.get_cell(pos)
-				self.__state[pos[0]][pos[1]] = cell
-				if orig_cell:
+				orig_cell = self.get_cell(pos)
+				self.__state[pos[0]][pos[1]] = cell # replace
+				if isinstance(orig_cell, Cell): # delete original if it was occupied
 					orig_cell.die()
 			for cell in deletes:
 				pos = cell.get_position()
 				self.__state[pos[0]][pos[1]] = None
-				# Destroy the instance and remove from strategy's internal state
-				cell.die()
+				cell.die() # destroy the instance by removing it from strategy's internal state
 
 	def add_strategy(self, strategy):
 		""" Adds a new strategy to the list of players (can be of same type) """
 		# Limit the number of strategies to 2 for now
 		if isinstance(strategy, Strategy) and len(self.__strategies) < 2:
 			self.__strategies.append(strategy)
-		# Allow chaining
-		return self
+		return self # allow chaining
 
 	def get_opponent_state(self, requestor):
-		""" To prevent looping through the entire get_state """
-		# So far only for two players
+		""" For two players only: this prevents need for looping through the entire get_state """
 		return self.__strategies[abs(self.__strategies.index(requestor)-1)].get_cells()
 
 	def get_state(self):
@@ -77,33 +72,30 @@ class Game:
 
 	def build(self):
 		""" Build up the starting board based on strategies' picks """
-		# Add strategies first and make sure this does not run twice
-		if len(self.__strategies) and not self.__state.count(Cell):
+		if len(self.__strategies): # check for strategies
 			# Initial turns are limited by the number of max(rows,cols)
 			for turn in range(max(self.__dimensions[0], self.__dimensions[1])):
-				# Apply  containers
 				adds = []
 				# Shuffle the choosing ground to minimise "overwrite" advantage
 				random.shuffle(self.__strategies)
 				for strategy in self.__strategies:
 					cell = strategy.create_cell(strategy.next_pick(turn))
-					if cell:
+					if isinstance(cell, Cell):
 						adds.append(cell)
-				# apply changes after the turn (no one gets the overseer advantage)
+				# Apply changes after the turn (no one gets the overseer advantage)
 				self.__apply(adds, [])
-			# print initial position
-			if self.__debug:
-				self.print_state()
+			# Print initial position
+			if self.__debug: self.print_state()
 
 	def run(self):
 		""" Run n turns of the game """
-		# A bit brute scan of all the positions each turn
+		# A brute scan of all the positions each turn
 		# There could be a faster algorithm through checking only on the living cells, but no time for it
 		if len(self.__strategies):
 			for turn in range(self.__turns):
-				# apply containers
-				adds = []
-				deletes = []
+				if not len(self.__strategies[0].get_cells()) or not len(self.__strategies[1].get_cells()):
+					break # stop playing if a strategy is gone earlier than self.__turns
+				adds = []; deletes = []
 				for row in range(self.__dimensions[0]):
 					for col in range(self.__dimensions[1]):
 						pos = [row, col]
@@ -114,13 +106,10 @@ class Game:
 							deletes.append(cell)
 						elif not cell and len(neighbors) == 3:
 							adds.append(self.get_majority(neighbors).create_cell(pos))
-				# apply changes after the turn for a correct processing
+				# apply changes after the turn for correct processing
 				self.__apply(adds, deletes)
-				if self.__debug:
-					self.print_state()
-					#print('\n' * (self.__dimensions[0] - 10)) # 'refresh'
-					time.sleep(0.1)
-					os.system('clear') # system 'refresh' if supported
+				if self.__debug: # show progress
+					self.print_state(); time.sleep(0.1); os.system('clear') # system 'refresh' if supported
 
 	def is_position(self, pos):
 		""" Determine if the argument is a valid position """
@@ -152,17 +141,16 @@ class Game:
 			col = pos[1] + round(math.cos(angle))
 			# Check if this position contains a cell
 			neighbor = self.get_cell([row, col])
-			if neighbor:
+			if isinstance(neighbor, Cell):
 				if as_cells:
 					neighbors.append(neighbor)
-				else:
+				else: # return as strategies
 					neighbors.append(neighbor.get_strategy())
 		return neighbors
 
 	def get_majority(self, cells):
 		""" Get the major strategy in the cells list """
 		# The majority for GoL(=3 fields regen) is ensured only if there are 2 players
-		# In general, I need to scan n+1<=8 cells when having n<8 strategies for a majority
 		if len(cells) == 3 and len(self.__strategies) == 2:
 			return self.__strategies[0] if cells.count(self.__strategies[0]) > cells.count(self.__strategies[1]) else self.__strategies[1]
 		elif len(self.__strategies) == 1:
@@ -179,18 +167,15 @@ class Game:
 
 	def get_winner(self):
 		""" Determine the winner of the game in the current turn """
-		winner = None
-		num = 1
-		record = 0
+		winner = None; record = 0
 		for strategy in self.__strategies:
-			# A little naive approach, but I'm trusting the strategies for now
+			# A little naive approach, but I'm trusting the strategies for now (their superclass)
 			result = len(strategy.get_cells())
 			if result > record:
 				record = result
-				winner = type(strategy).__name__ + ' ' + strategy.get_sign() if self.__debug else strategy # if 2 strat. of same kind
+				winner = type(strategy).__name__ + ' ' + strategy.get_sign() if self.__debug else strategy
 			elif result == record:
 				winner = None
-			num+=1
 		return winner
 
 	def get_random_offset(self, pos, width, height):
@@ -230,8 +215,7 @@ class Strategy:
 	def create_cell(self, pos):
 		""" Makes the strategy do a new pick and adds it to its cells """
 		new_cell = None
-		# Strategy has a choice to be idle
-		if pos != 0:
+		if pos != 0: # Strategy has a choice to be idle
 			new_cell = Cell(self, pos)
 			# Append the new cell to the list automatically
 			self.__cells.append(new_cell)
@@ -240,8 +224,8 @@ class Strategy:
 
 	def remove_cell(self, cell):
 		""" Remove the cell from the cell list """
-		# To prevent the outside to mess with internal mechanisms
-		if self.__game.get_cell(cell.get_position()) is not self:
+		# To prevent the outside to mess with internal mechanisms (i.e. delete only when a cell doesn't exist anymore on the board)
+		if self.__game.get_cell(cell.get_position()) is not cell:
 			self.__cells.remove(cell)
 
 	def next_pick(self, turn):
@@ -280,4 +264,3 @@ class Cell:
 	def die(self):
 		""" Destroying the cell """
 		self.__strategy.remove_cell(self)
-		# is there any way how to turn on the garbage collector?

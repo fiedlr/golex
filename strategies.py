@@ -1,4 +1,4 @@
-""" <github.com/fiedlr/GoLEX> | (c) 2016 Adam Fiedler | <opensource.org/licenses/MIT> """
+""" golex v0.7 <github.com/fiedlr/golex> | (c) 2016 Adam Fiedler | <opensource.org/licenses/MIT> """
 
 from main import Strategy
 import random
@@ -80,10 +80,8 @@ class Ship(Strategy):
 
 	def next_pick(self, turn):
 		# Halt the first time
-		if self.get_game().get_config('strategies') > 1 and turn % 5 == 0:
+		if turn % 5 == 0:
 			self.__initial_position = self.get_game().get_random_free_position()
-		elif turn > 4:
-			return 0
 		
 		pos = [self.__initial_position[0] + self.__pattern[turn % 5][0], self.__initial_position[1] + self.__pattern[turn % 5][1]]
 
