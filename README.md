@@ -24,6 +24,7 @@ Game of Life Extended. Work in progress.
 - after the "buildup" round, GoL algorithm takes over and decides the game
 
 > the algorithm here is extended in a way that a cell needs at least two **friendly** neighbor cells (made by the same strategy) to survive, however, more than 3 neighbors of **any** strategy kills it
+
 > any empty spot (a 'dead' cell) is taken by the neighboring **majority** strategy (the strategy that has more (at least 3) of its cells in the dead cell area than the other)
 
 - the **winning strategy** is the one whose cells survived in greater number after a defined amount of GoL rounds and/or when the other strategies die out
